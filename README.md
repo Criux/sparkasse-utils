@@ -1,7 +1,7 @@
 [//]: # (<img src="docs/images/banksy_logo.png" align="right" alt="banksy logo">)
 # Sparkasse Utils with Banksy
 
-[![Version](https://img.shields.io/badge/Version-v1.0.1-blue.svg?style=for-the-badge)](https://shields.io/)
+[![Version](https://img.shields.io/badge/Version-v1.0.2-blue.svg?style=for-the-badge)](https://shields.io/)
 [![Licence](https://img.shields.io/badge/Licence-MIT-success.svg?style=for-the-badge)](https://shields.io/)
 
 Sparkasse Utilities expose Online Banking functionality from [Sparkasse-Bielefeld](https://www.sparkasse-bielefeld.de/de/home.html) through REST endpoints.
