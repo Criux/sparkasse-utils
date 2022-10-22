@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
 
 @SpringBootApplication
 public class SparkasseUtilsApplication {
@@ -15,10 +16,11 @@ public class SparkasseUtilsApplication {
 	@Autowired
 	Sparkasse sparkasse;
 
-//	@Bean
+	@Bean
 	public CommandLineRunner run(){
 		return args -> {
-			sparkasse.printLatestBookings();
+//			sparkasse.printLatestBookings();
+			sparkasse.sendAmount("1","test");
 		};
 	}
 

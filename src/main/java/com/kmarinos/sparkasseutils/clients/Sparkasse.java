@@ -6,6 +6,7 @@ import com.gargoylesoftware.htmlunit.ScriptException;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebResponse;
 import com.gargoylesoftware.htmlunit.html.DomElement;
+import com.gargoylesoftware.htmlunit.html.Html;
 import com.gargoylesoftware.htmlunit.html.HtmlForm;
 import com.gargoylesoftware.htmlunit.html.HtmlInput;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
@@ -112,8 +113,13 @@ public class Sparkasse {
       });
 
       //click button for login
-      HtmlPage loggedIn = page.getElementById("defaultAction").click();
-      return loggedInCallback.apply(loggedIn);
+      var loginButton = loginForm.getElementsByTagName("input").stream().filter(e->e.getAttribute("title").equals("Anmelden")).findFirst();
+      if(loginButton.isPresent()){
+        HtmlPage loggedIn = loginButton.get().click();
+        return loggedInCallback.apply(loggedIn);
+      }else{
+        throw new RuntimeException("Cannot find login button");
+      }
     }
   }
   public void login(String url, Consumer<HtmlPage> loggedInCallback) throws IOException {
@@ -144,21 +150,18 @@ public class Sparkasse {
   private RequestPaymentResponse processPaymentRequest(BigDecimal actualAmount,
       String reasonForPayment, HtmlPage loggedIn)
       throws IOException {
-    loggedIn.getForms();
-
-    HtmlForm transferForm = loggedIn.getForms().stream().skip(2).findFirst()
-        .orElseThrow(() -> new RuntimeException("No transfer form"));
-
-    //iterate all divs to find the ones with labels and input values
-    transferForm.getElementsByTagName("div").stream()
-        .filter(div -> div.hasAttribute("class") && div.getAttribute("class").contains("bline"))
+    HtmlPage accountSelected =loggedIn.getElementsByTagName("a").stream().filter(e->e.hasAttribute("aria-label")&&e.getAttribute("aria-label").contains("IBAN")).findFirst().orElseThrow(()->new RuntimeException("Cannot select account to transfer from")).click();
+    accountSelected.getElementsByTagName("div").stream().filter(div->div.hasAttribute("class") && div.getAttribute("class").contains("bline"))
         .forEach(
             div -> {
-              if (div.getElementsByTagName("label").size() > 0) {
+              if("idLineBeguenstigerNameOderIban".equals(div.getId())){
+                ((HtmlInput) div.getElementsByTagName("input").get(0)).setValueAttribute(
+                    recipientName);
+              }else if (div.getElementsByTagName("label").size() > 0) {
                 var label = div.getElementsByTagName("label").get(0);
                 if (label != null) {
                   String labelText = label.getTextContent();
-                  if (labelText.contains("Begünstigter")) {
+                  if (labelText.contains("Empfänger")) {
                     ((HtmlInput) div.getElementsByTagName("input").get(0)).setValueAttribute(
                         recipientName);
                   } else if (labelText.contains("IBAN")) {
@@ -176,23 +179,20 @@ public class Sparkasse {
             }
         );
     //submit the payment form
-    HtmlPage confirmPage = transferForm.getInputByValue("Weiter").click();
-
+      HtmlPage confirmPage = accountSelected.getElementById("defaultAction").click(false, false, false, false, false, true,
+        false);
     //get the confirmation page and submit the default form
-    HtmlForm confirmationForm = confirmPage.getForms().stream().filter(
-            f -> f.getActionAttribute() != null && f.getActionAttribute().contains("ueberweisung")
-                && !f.hasAttribute("class")).findFirst()
-        .orElseThrow(() -> new RuntimeException("No confirmation form"));
-    HtmlPage verifyPage=confirmationForm.getInputByValue("Weiter").click();
-//    try{
-//       verifyPage =
-//    }catch (Exception e){
-//      return responseBuilder.get().ok(false).message("Cannot process request. Please try again in a bit").build();
-//    }
+    HtmlPage verifyPage = confirmPage.getElementById("defaultAction").click(false, false, false, false, false, true,
+        false);
 
     //parse the result of the final page to read the confirmation window
     return parseConfirmationDialog(actualAmount,verifyPage);
 
+
+  }
+  private RequestPaymentResponse parseFakeConfirmationDialog(BigDecimal actualAmount,HtmlPage verifyPage){
+    return responseBuilder.get().ok(true).message("Transfer success")
+        .amount(actualAmount.toPlainString()).build();
   }
   private RequestPaymentResponse parseConfirmationDialog(BigDecimal actualAmount,HtmlPage verifyPage){
     if (verifyPage.getBody().getElementsByTagName("div").stream().anyMatch(
